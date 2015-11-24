@@ -56,6 +56,7 @@ func (mr *MapReduce) RunMaster() *list.List {
                 ok := call(v.address, "Worker.DoJob", arg, &res)
                 if ok == false {
                     DPrintf("%s failed\n", v.address)
+                    v.alive = false
                 } else {
                     break
                 }
@@ -73,6 +74,7 @@ func (mr *MapReduce) RunMaster() *list.List {
                 ok := call(v.address, "Worker.DoJob", arg, &res)
                 if ok == false {
                     DPrintf("%s failed\n", v.address)
+                    v.alive = false
                 } else {
                     break
                 }
