@@ -1,10 +1,10 @@
 package mapreduce
 import "container/list"
 import "fmt"
-import "log"
 
 type WorkerInfo struct {
   address string
+  alive bool
   // You can add definitions here.
 }
 
@@ -27,18 +27,23 @@ func (mr *MapReduce) KillWorkers() *list.List {
   return l
 }
 
+
+func getWorkers(mr *MapReduce) {
+    for true {
+        workInfo := &WorkerInfo{}
+        register :=  <- mr.registerChannel
+        workInfo.address = register
+        workInfo.alive = true
+        mr.Workers[workInfo.address] = workInfo
+    }
+}
+
+
 func (mr *MapReduce) RunMaster() *list.List {
   // Your code here
     DPrintf("Run Master\n")
     mr.Workers = make(map[string]*WorkerInfo)
-    for i := 0; i < 2; i++ {
-        workInfo := &WorkerInfo{}
-        register :=  <- mr.registerChannel
-        workInfo.address = register
-        mr.Workers[workInfo.address] = workInfo
-    }
-
-    for _, v := range mr.Workers {
+    go getWorkers(mr)
         for i := 0; i < mr.nMap; i++ {
             arg := &DoJobArgs{}
             arg.File = mr.file
@@ -46,13 +51,16 @@ func (mr *MapReduce) RunMaster() *list.List {
             arg.JobNumber = i
             arg.NumOtherPhase = mr.nReduce
             res := DoJobReply{}
-            ok := call(v.address, "Worker.DoJob", arg, &res)
-            if ok == false {
-                fmt.Printf("RPC Call DoJob error")
+            for true {
+                v := mr.PickAliveWorker()
+                ok := call(v.address, "Worker.DoJob", arg, &res)
+                if ok == false {
+                    DPrintf("%s failed\n", v.address)
+                } else {
+                    break
+                }
             }
          }
-    }
-    for _, v := range mr.Workers {
         for i := 0; i < mr.nReduce; i++ {
             arg := &DoJobArgs{}
             arg.File = mr.file
@@ -60,11 +68,15 @@ func (mr *MapReduce) RunMaster() *list.List {
             arg.JobNumber = i
             arg.NumOtherPhase = mr.nMap
             res := DoJobReply{}
-            ok := call(v.address, "Worker.DoJob", arg, &res)
-            if ok == false {
-                fmt.Printf("RPC Call DoJob error")
+            for true {
+                v := mr.PickAliveWorker()
+                ok := call(v.address, "Worker.DoJob", arg, &res)
+                if ok == false {
+                    DPrintf("%s failed\n", v.address)
+                } else {
+                    break
+                }
             }
          }
-    }
     return mr.KillWorkers()
 }

@@ -34,7 +34,7 @@ import "hash/fnv"
 // which Merge() merges into a single output.
 
 // Debugging
-const Debug = 0
+const Debug = 1
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
   if Debug > 0 {
@@ -132,7 +132,16 @@ func (mr *MapReduce) StartRegistrationServer() {
   }()
 }
 
-
+func (mr *MapReduce) PickAliveWorker() *WorkerInfo {
+    for true {
+        for _, v := range mr.Workers {
+            if v.alive == true {
+                return v
+            }
+        }
+    }
+    return nil
+}
 // Name of the file that is the input for map job <MapJob>
 func MapName(fileName string, MapJob int) string {
   return "mrtmp." +  fileName + "-" + strconv.Itoa(MapJob)
