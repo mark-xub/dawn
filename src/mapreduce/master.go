@@ -1,6 +1,7 @@
 package mapreduce
 import "container/list"
 import "fmt"
+import "log"
 
 type WorkerInfo struct {
   address string
@@ -28,6 +29,42 @@ func (mr *MapReduce) KillWorkers() *list.List {
 
 func (mr *MapReduce) RunMaster() *list.List {
   // Your code here
-  git branch
-  return mr.KillWorkers()
+    DPrintf("Run Master\n")
+    mr.Workers = make(map[string]*WorkerInfo)
+    for i := 0; i < 2; i++ {
+        workInfo := &WorkerInfo{}
+        register :=  <- mr.registerChannel
+        workInfo.address = register
+        mr.Workers[workInfo.address] = workInfo
+    }
+
+    for _, v := range mr.Workers {
+        for i := 0; i < mr.nMap; i++ {
+            arg := &DoJobArgs{}
+            arg.File = mr.file
+            arg.Operation = "Map"
+            arg.JobNumber = i
+            arg.NumOtherPhase = mr.nReduce
+            res := DoJobReply{}
+            ok := call(v.address, "Worker.DoJob", arg, &res)
+            if ok == false {
+                fmt.Printf("RPC Call DoJob error")
+            }
+         }
+    }
+    for _, v := range mr.Workers {
+        for i := 0; i < mr.nReduce; i++ {
+            arg := &DoJobArgs{}
+            arg.File = mr.file
+            arg.Operation = "Reduce"
+            arg.JobNumber = i
+            arg.NumOtherPhase = mr.nMap
+            res := DoJobReply{}
+            ok := call(v.address, "Worker.DoJob", arg, &res)
+            if ok == false {
+                fmt.Printf("RPC Call DoJob error")
+            }
+         }
+    }
+    return mr.KillWorkers()
 }
